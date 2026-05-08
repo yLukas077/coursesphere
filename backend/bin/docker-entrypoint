@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+rm -f /app/tmp/pids/server.pid
+
+if [ "${SKIP_DB_WAIT}" != "true" ]; then
+  echo "Waiting for database..."
+  until pg_isready -h "${DB_HOST:-db}" -U "${DB_USER:-postgres}" >/dev/null 2>&1; do
+    sleep 1
+  done
+fi
+
+echo "Preparing database..."
+bundle exec rails db:prepare
+
+if [ "${SEED_ON_BOOT}" = "true" ]; then
+  echo "Seeding database..."
+  bundle exec rails db:seed || true
+fi
+
+exec "$@"

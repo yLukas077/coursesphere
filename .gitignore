@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Backend
+backend/log/*.log
+backend/tmp/
+backend/.bundle/
+backend/storage/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Misc
+*.zip
