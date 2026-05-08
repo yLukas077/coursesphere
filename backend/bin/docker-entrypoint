@@ -1,10 +1,11 @@
-#!/bin/bash
 set -e
 
 rm -f /app/tmp/pids/server.pid
 
-if [ "${SKIP_DB_WAIT}" != "true" ]; then
-  echo "Waiting for database..."
+if [ -n "${DATABASE_URL}" ]; then
+  echo "Using DATABASE_URL (production mode)"
+else
+  echo "Waiting for database at ${DB_HOST:-db}..."
   until pg_isready -h "${DB_HOST:-db}" -U "${DB_USER:-postgres}" >/dev/null 2>&1; do
     sleep 1
   done
