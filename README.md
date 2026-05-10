@@ -1,11 +1,14 @@
 # CourseSphere
 
-Aplicação full stack de gestão colaborativa de cursos online — desafio técnico V-LAB.
+Aplicação full stack de gestão colaborativa de cursos online
 
 **Stack:** Ruby on Rails 7 (API) · React 18 + Vite + TypeScript · PostgreSQL 15 · JWT · Tailwind CSS · TanStack Query · Docker · RSpec · Vitest
 
-> 🔗 **Deploy:** [frontend](https://SEU-APP.vercel.app) · [backend](https://SEU-APP.onrender.com/up)
+> 🔗 **Aplicação em produção:** [coursesphere-three.vercel.app](https://coursesphere-three.vercel.app)
+> 🔌 **API backend:** [coursesphere-backend-yoeh.onrender.com](https://coursesphere-backend-yoeh.onrender.com/up)
 > 🔑 **Login de teste:** `demo@coursesphere.dev` / `password123`
+
+> ⏱️ **Sobre o cold start:** o backend está hospedado no plano free do Render, que coloca a aplicação em sleep após 15 minutos de inatividade. A primeira requisição após o sleep pode levar ~30-60 segundos para acordar. Requisições subsequentes são instantâneas. Se o login parecer "travado" ao testar, aguarde até um minuto e tente novamente — é o backend acordando, não um bug.
 
 ---
 
@@ -44,12 +47,12 @@ Modo recomendado — sobe banco, backend e frontend com um único comando.
 **Pré-requisitos:** Docker e Docker Compose.
 
 ```bash
-git clone https://github.com/SEU_USUARIO/coursesphere.git
+git clone https://github.com/yLukas077/coursesphere.git
 cd coursesphere
 docker compose up --build
 ```
 
-Na primeira execução o backend roda migrations + seeds automaticamente. Aguarde a mensagem `Listening on http://0.0.0.0:3000`.
+Na primeira execução o backend roda migrations + seeds automaticamente (porque o `docker-compose.yml` define `SEED_ON_BOOT=true` para dev). Aguarde a mensagem `Listening on http://0.0.0.0:3000`.
 
 | Serviço      | URL                                  |
 | ------------ | ------------------------------------ |
@@ -222,6 +225,14 @@ frontend/src/
 
 **Componentes UI.** Estilo shadcn/ui (Tailwind + variantes via CVA), mas inline no projeto — sem dependência de uma CLI ou registro externo. Isso mantém o código transparente e zero acoplamento com versões de biblioteca.
 
+### Infraestrutura — entrypoint inteligente
+
+O `backend/bin/docker-entrypoint` detecta o ambiente:
+
+- **Em desenvolvimento** (sem `DATABASE_URL`): aguarda o container do Postgres via `pg_isready` antes de prosseguir.
+- **Em produção** (com `DATABASE_URL`): pula o wait, vai direto para `db:prepare` (cria o banco se não existir e roda as migrations pendentes).
+- **Seed condicional:** `db:seed` só roda se `SEED_ON_BOOT=true` estiver setado. Em desenvolvimento o `docker-compose.yml` ativa isso; em produção fica desligado para não zerar o banco a cada deploy.
+
 ### Trade-offs assumidos
 
 - **Sem refresh tokens.** JWT de 7 dias é suficiente para o escopo. Em produção real, access curto + refresh seria o ideal.
@@ -233,48 +244,12 @@ frontend/src/
 
 ## Deploy
 
-### Backend — Render
+Aplicação em produção:
 
-1. Crie um **PostgreSQL** no Render (plano free). Anote a Internal Database URL.
-2. Crie um **Web Service** apontando para a pasta `backend/` do repositório.
-3. Configure:
-   - **Environment:** Docker (usa o `Dockerfile` da pasta) ou Native (Ruby 3.2.2)
-   - **Build command:** `bundle install`
-   - **Start command:** `bin/rails db:migrate && bin/rails server -b 0.0.0.0 -p $PORT`
-4. **Variáveis de ambiente:**
+- **Frontend** na Vercel ([coursesphere-three.vercel.app](https://coursesphere-three.vercel.app)) — build do Vite com `vercel.json` para rewrites SPA.
+- **Backend + PostgreSQL** no Render, runtime Docker — o `Dockerfile` e o `bin/docker-entrypoint` cuidam de migrations e (opcionalmente) seeds no boot.
 
-   | Variável         | Valor                                                              |
-   | ---------------- | ------------------------------------------------------------------ |
-   | `RAILS_ENV`      | `production`                                                       |
-   | `DATABASE_URL`   | Internal URL do Postgres do Render                                 |
-   | `JWT_SECRET`     | string aleatória forte (use `bin/rails secret`)                    |
-   | `SECRET_KEY_BASE`| string aleatória forte                                             |
-   | `CORS_ORIGINS`   | URL pública do Vercel (preencher após o deploy do frontend)        |
-   | `ALLOWED_HOSTS`  | URL pública do Render (sem `https://`)                             |
-   | `RAILS_LOG_LEVEL`| `info`                                                             |
-
-5. Após o primeiro deploy, rode os seeds **uma vez** via Shell:
-   ```bash
-   bundle exec rails db:seed
-   ```
-
-### Frontend — Vercel
-
-1. Importe o repositório no Vercel.
-2. Configure:
-   - **Root directory:** `frontend`
-   - **Framework:** Vite (auto-detectado)
-   - **Build command:** `npm run build`
-   - **Output directory:** `dist`
-3. **Variável de ambiente:**
-
-   | Variável         | Valor                                            |
-   | ---------------- | ------------------------------------------------ |
-   | `VITE_API_URL`   | `https://SEU-BACKEND.onrender.com/api/v1`        |
-
-4. Após o deploy, copie a URL final e adicione em `CORS_ORIGINS` no Render. Faça redeploy do backend.
-
-O arquivo `frontend/vercel.json` já configura os rewrites SPA para que rotas como `/courses/123` funcionem ao recarregar.
+Configuração via variáveis de ambiente: `DATABASE_URL`, `JWT_SECRET`, `SECRET_KEY_BASE`, `CORS_ORIGINS`, `ALLOWED_HOSTS`.
 
 ---
 
